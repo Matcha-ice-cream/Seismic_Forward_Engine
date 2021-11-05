@@ -1,8 +1,7 @@
 import taichi as ti
-from wave_module import wave
+from FD_wave.wave_module import wave
 
 ti.init(arch=ti.gpu)
-
 
 wave_cs = wave(200, 300, 400, 400, 10.0, 10.0, 1, 10, 1, 1e-3, 3, 20)
 
