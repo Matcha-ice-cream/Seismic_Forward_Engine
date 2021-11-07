@@ -1,7 +1,6 @@
 import taichi as ti
 import numpy as np
 
-# fdsf
 @ti.data_oriented
 class wave:
     def __init__(self, src_x, src_z, nx, nz, dx, dz, PML_up_ToF, PML_n, mod_flag, dt, t, fm):
@@ -297,27 +296,28 @@ class wave:
     @ti.kernel
     def wave_field_cal(self, frame: ti.f32):
         for i, j in self.v_field:
-            if 2 < i < self.nx - 2 and 2 < j < self.nz - 2:
+            if self.PML_n <= i <= self.nx - self.PML_n and self.PML_n <= j <= self.nz - self.PML_n:
                 self.p_w[i, j][0] = self.C_wave[0] * (self.p_field[i, j + 1] - self.p_field[i, j]) - \
                                     self.C_wave[1] * (self.p_field[i, j + 2] - self.p_field[i, j - 1])
                 self.p_w[i, j][1] = self.C_wave[2] * (self.p_field[i + 1, j] - self.p_field[i, j]) - \
                                     self.C_wave[3] * (self.p_field[i + 2, j] - self.p_field[i - 1, j])
 
-                self.PML_p(i, j)
-
                 self.v_field[i, j][0] = self.v_field[i, j][0] - self.dt / self.model[i, j][1] * self.p_w[i, j][0]
                 self.v_field[i, j][1] = self.v_field[i, j][1] - self.dt / self.model[i, j][1] * self.p_w[i, j][1]
+
+            else:
+                pass
 
         self.p_field[self.src_x, self.src_z] = self.ricker(frame)
 
         for i, j in self.p_field:
-            if 2 < i < self.nx - 2 and 2 < j < self.nz - 2:
+            if self.PML_n <= i <= self.nx - self.PML_n and self.PML_n <= j <= self.nz - self.PML_n:
                 self.v_w[i, j][0] = self.C_wave[0] * (self.v_field[i, j][0] - self.v_field[i, j - 1][0]) - \
                                     self.C_wave[1] * (self.v_field[i, j + 1][0] - self.v_field[i, j - 2][0])
                 self.v_w[i, j][1] = self.C_wave[2] * (self.v_field[i, j][1] - self.v_field[i - 1, j][1]) - \
                                     self.C_wave[3] * (self.v_field[i + 1, j][1] - self.v_field[i - 2, j][1])
 
-                self.PML_v(i, j)
-
                 self.p_field[i, j] = self.p_field[i, j] - self.model[i, j][0] ** 2 * self.model[i, j][1] * self.dt * (
                         self.v_w[i, j][0] + self.v_w[i, j][1])
+            else:
+                pass
