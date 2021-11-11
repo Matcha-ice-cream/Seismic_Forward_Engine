@@ -36,7 +36,7 @@ class wave:
 
     @ti.func
     def ricker(self, frame):
-        return 1.0 * (1 - 2 * (3.1415926 * self.fm * self.dt * frame) ** 2) \
+        return 10.0 * (1 - 2 * (3.1415926 * self.fm * self.dt * frame) ** 2) \
                * ti.exp(-(3.1415926 * self.fm * self.dt * frame) ** 2)
 
 
