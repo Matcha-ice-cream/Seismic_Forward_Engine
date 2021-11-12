@@ -19,7 +19,7 @@ gui_rec = ti.GUI("rec", (500, 1000))
 
 while frame < 1000:
     wave_cs.wave_field_cal(frame)
-    receiver_cs.rec_gather(600, 600, wave_cs.p, frame)
+    receiver_cs.rec_gather(wave_cs.p, frame)
     receiver_cs.rec_dynamic(wave_cs.dt, frame, 4.0)
 
     gui.set_image(wave_cs.p)
