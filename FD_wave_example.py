@@ -12,20 +12,22 @@ wave_cs.PML_cal()
 gui = ti.GUI("wave", (600, 600))
 
 
-receiver_cs = receiver('int', 100, 1000)
-receiver_cs.rec_default(600, 600)
-gui_rec = ti.GUI("rec", (100, 1000))
-
+receiver_cs = receiver('node', 500, 1000)
+receiver_cs.rec_init(600, 600)
+gui_rec = ti.GUI("rec", (500, 1000))
 
 
 while frame < 1000:
     wave_cs.wave_field_cal(frame)
     receiver_cs.rec_gather(600, 600, wave_cs.p, frame)
+    receiver_cs.rec_dynamic(wave_cs.dt, frame, 4.0)
 
     gui.set_image(wave_cs.p)
-    gui.show()
-
     gui_rec.set_image(receiver_cs.rec_value)
+
+    gui.show()
     gui_rec.show()
 
     frame += 1
+
+print(receiver_cs.rec_pos_f)

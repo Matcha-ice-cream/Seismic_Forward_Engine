@@ -44,7 +44,7 @@ class wave:
     def mod_default(self):
         for i, j in self.model:
             if j < self.nz / 2:
-                self.model[i, j] = ti.Vector([3000.0, 1.0])
+                self.model[i, j] = ti.Vector([2000.0, 1.0])
             else:
                 self.model[i, j] = ti.Vector([2500.0, 1.0])
 
