@@ -102,6 +102,3 @@ class wave:
                 self.p_field[i, j][1] = self.p_field[i, j][1] - self.model[i, j][0] ** 2 * self.model[i, j][1] * self.dt * (
                         self.v_w[i, j][1]) - self.d[i, j][1] * self.p_field[i, j][1]
                 self.p[i, j] = self.p_field[i, j][0] + self.p_field[i, j][1]
-        
-
-     
