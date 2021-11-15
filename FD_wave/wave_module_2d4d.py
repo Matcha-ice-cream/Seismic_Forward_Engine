@@ -20,7 +20,9 @@ class wave:
 
         self.fn = 2
 
-        self.model = ti.Vector.field(2, dtype=ti.f32, shape=(nx, nz))
+        self.model_v = ti.field(dtype=ti.f32, shape=(nx, nz))
+        self.model_rho = ti.field(dtype=ti.f32, shape=(nx, nz))
+
         self.p = ti.field(dtype=ti.f32, shape=(self.nx, self.nz))
         self.p_field = ti.Vector.field(2, dtype=ti.f32, shape=(self.nx, self.nz))
         self.v_field = ti.Vector.field(2, dtype=ti.f32, shape=(self.nx, self.nz))
@@ -36,17 +38,23 @@ class wave:
 
     @ti.func
     def ricker(self, frame):
-        return 10.0 * (1 - 2 * (3.1415926 * self.fm * self.dt * frame) ** 2) \
-               * ti.exp(-(3.1415926 * self.fm * self.dt * frame) ** 2)
+        return 10.0 * (1 - 2 * (3.1415926 * self.fm * self.dt * (frame-100)) ** 2) \
+               * ti.exp(-(3.1415926 * self.fm * self.dt * (frame-100)) ** 2)
 
 
     @ti.kernel
     def mod_default(self):
-        for i, j in self.model:
-            if j < self.nz / 2:
-                self.model[i, j] = ti.Vector([2000.0, 1.0])
+        for i, j in self.model_v:
+            if j < self.nz / 3:
+                self.model_v[i, j] = 2500.0
             else:
-                self.model[i, j] = ti.Vector([2500.0, 1.0])
+                self.model_v[i, j] = 2000.0
+        for i, j in self.model_rho:
+            if j < self.nz / 2:
+                self.model_rho[i, j] = 1.0
+            else:
+                self.model_rho[i, j] = 1.0
+
 
     def mod_file(self, path):
         arr = np.loadtxt(path)
@@ -85,8 +93,8 @@ class wave:
                                     self.C_wave[1] * (self.p[i, j + 2] - self.p[i, j - 1])
                 self.p_w[i, j][1] = self.C_wave[2] * (self.p[i + 1, j] - self.p[i, j]) - \
                                     self.C_wave[3] * (self.p[i + 2, j] - self.p[i - 1, j])
-                self.v_field[i, j][0] = self.v_field[i, j][0] - self.dt / self.model[i, j][1] * self.p_w[i, j][0] - self.d[i, j][0] * self.v_field[i, j][0]
-                self.v_field[i, j][1] = self.v_field[i, j][1] - self.dt / self.model[i, j][1] * self.p_w[i, j][1] - self.d[i, j][1] * self.v_field[i, j][1]
+                self.v_field[i, j][0] = self.v_field[i, j][0] - self.dt / self.model_rho[i, j] * self.p_w[i, j][0] - self.d[i, j][0] * self.v_field[i, j][0]
+                self.v_field[i, j][1] = self.v_field[i, j][1] - self.dt / self.model_rho[i, j] * self.p_w[i, j][1] - self.d[i, j][1] * self.v_field[i, j][1]
 
         self.p_field[self.src_x, self.src_z][0] = self.ricker(frame)/1.0
         self.p_field[self.src_x, self.src_z][1] = self.ricker(frame)/1.0
@@ -97,9 +105,9 @@ class wave:
                                     self.C_wave[1] * (self.v_field[i, j + 1][0] - self.v_field[i, j - 2][0])
                 self.v_w[i, j][1] = self.C_wave[2] * (self.v_field[i, j][1] - self.v_field[i - 1, j][1]) - \
                                     self.C_wave[3] * (self.v_field[i + 1, j][1] - self.v_field[i - 2, j][1])
-                self.p_field[i, j][0] = self.p_field[i, j][0] - self.model[i, j][0] ** 2 * self.model[i, j][1] * self.dt * (
+                self.p_field[i, j][0] = self.p_field[i, j][0] - self.model_v[i, j] ** 2 * self.model_rho[i, j] * self.dt * (
                         self.v_w[i, j][0]) - self.d[i, j][0] * self.p_field[i, j][0]
-                self.p_field[i, j][1] = self.p_field[i, j][1] - self.model[i, j][0] ** 2 * self.model[i, j][1] * self.dt * (
+                self.p_field[i, j][1] = self.p_field[i, j][1] - self.model_v[i, j] ** 2 * self.model_rho[i, j] * self.dt * (
                         self.v_w[i, j][1]) - self.d[i, j][1] * self.p_field[i, j][1]
                 self.p[i, j] = self.p_field[i, j][0] + self.p_field[i, j][1]
 

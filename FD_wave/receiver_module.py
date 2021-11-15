@@ -20,7 +20,7 @@ class receiver:
     @ti.kernel
     def rec_init(self, nx: ti.i32, nz: ti.i32):
         for i in self.rec_pos_f:
-            self.rec_pos_f_0[i][0] = float(nx) / 2.0 + float(i - self.rec_n / 2)
+            self.rec_pos_f_0[i][0] = float(nx) / 2.0 + float(i - self.rec_n / 2)*0.2
             self.rec_pos_f_0[i][1] = float(2 * nz / 3)
         for i in self.rec_pos_i:
             self.rec_pos_i[i][0] = nx / 2 + i - self.rec_n / 2
@@ -53,7 +53,7 @@ class receiver:
     def rec_gather(self, wave: ti.template(), t: ti.i32):
         if self.mod == 'node':
             for i in self.rec_pos_i:
-                self.rec_value[i, 1000 - t + 1] = wave[(self.rec_pos_i[i][0]), (self.rec_pos_i[i][1])]
+                self.rec_value[i, self.nt - t + 1] = wave[(self.rec_pos_i[i][0]), (self.rec_pos_i[i][1])]
 
         if self.mod == 'PIC':
             for i in self.rec_pos_f:
@@ -63,7 +63,7 @@ class receiver:
                         xy = ti.Vector([center[0] + j - 1, center[1] + k - 1])
                         r = ((xy[0] - self.rec_pos_f[i][0]) ** 2.0 + (xy[1] - self.rec_pos_f[i][1]) ** 2.0) ** 0.5
                         w = (15.0 / (3.1415926 * 2.0 ** 6.0)) * (2.0 - r) ** 3.0
-                        self.rec_value[i, 1000 - t + 1] = self.rec_value[i, 1000 - t + 1] + w * wave[xy[0], xy[1]]
+                        self.rec_value[i, self.nt - t + 1] = self.rec_value[i, self.nt - t + 1] + w * wave[xy[0], xy[1]]
 
     def export(self, arr, path):
         arr_export = arr.to_numpy()
