@@ -3,7 +3,7 @@ import numpy as np
 
 @ti.data_oriented
 class wave:
-    def __init__(self, src_x, src_z, nx, nz, dx, dz, PML_up_ToF, PML_n, mod_flag, dt, t, fm):
+    def __init__(self, src_x, src_z, nx, nz, dx, dz, PML_up_ToF, PML_n, dt, t, fm, mod_vp, mod_rho):
         self.src_x = src_x
         self.src_z = src_z
         self.nx = nx
@@ -13,7 +13,6 @@ class wave:
         self.dt = dt
         self.fm = fm
         self.PML_up_ToF = PML_up_ToF
-        self.mod_flag = mod_flag
         self.PML_n = PML_n
         self.dx = dx
         self.dz = dz
@@ -22,6 +21,9 @@ class wave:
 
         self.model_v = ti.field(dtype=ti.f32, shape=(nx, nz))
         self.model_rho = ti.field(dtype=ti.f32, shape=(nx, nz))
+
+        self.model_v = mod_vp
+        self.model_rho = mod_rho
 
         self.p = ti.field(dtype=ti.f32, shape=(self.nx, self.nz))
         self.p_field = ti.Vector.field(2, dtype=ti.f32, shape=(self.nx, self.nz))
@@ -41,24 +43,6 @@ class wave:
         return 10.0 * (1 - 2 * (3.1415926 * self.fm * self.dt * (frame-100)) ** 2) \
                * ti.exp(-(3.1415926 * self.fm * self.dt * (frame-100)) ** 2)
 
-
-    @ti.kernel
-    def mod_default(self):
-        for i, j in self.model_v:
-            if j < self.nz / 3:
-                self.model_v[i, j] = 2500.0
-            else:
-                self.model_v[i, j] = 2000.0
-        for i, j in self.model_rho:
-            if j < self.nz / 2:
-                self.model_rho[i, j] = 1.0
-            else:
-                self.model_rho[i, j] = 1.0
-
-
-    def mod_file(self, path):
-        arr = np.loadtxt(path)
-        self.model = arr.from_numpy()
 
     @ti.kernel
     def PML_cal(self):

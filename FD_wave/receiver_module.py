@@ -17,6 +17,17 @@ class receiver:
 
         self.e = ti.field(dtype=ti.f32, shape=200)
 
+    @ti.func
+    def weight(self, r, h):
+        R = r / h
+        a = 15.0 / (7.0 * 3.1415926 * h ** 2.0)
+        w1 = 0.0
+        if R <= 2.0:
+            w1 = a * (2.0 / 3.0 - 9.0 / 8.0 * R ** 2.0 + 19.0 / 24.0 * R ** 3.0 - 5.0 / 32.0 * R ** 4.0)
+        else:
+            w1 = 0.0
+        return w1
+
     @ti.kernel
     def rec_init(self, nx: ti.i32, nz: ti.i32):
         for i in self.rec_pos_f:
@@ -29,6 +40,12 @@ class receiver:
             self.rec_value[i, j] = 0.0
         for i in self.e:
             self.e[i] = ti.random() * 2.0 * 3.1415926
+
+    def rec_from_file(self, path):
+        arr = np.loadtxt(path)
+        self.rec_pos_f_0 = arr.from_numpy()
+        self.rec_pos_i = arr.from_numpy()
+
         
 
     @ti.kernel
@@ -62,7 +79,7 @@ class receiver:
                     for k in range(3):
                         xy = ti.Vector([center[0] + j - 1, center[1] + k - 1])
                         r = ((xy[0] - self.rec_pos_f[i][0]) ** 2.0 + (xy[1] - self.rec_pos_f[i][1]) ** 2.0) ** 0.5
-                        w = (15.0 / (3.1415926 * 2.0 ** 6.0)) * (2.0 - r) ** 3.0
+                        w = self.weight(r, 3.0)
                         self.rec_value[i, self.nt - t + 1] = self.rec_value[i, self.nt - t + 1] + w * wave[xy[0], xy[1]]
 
     def export(self, arr, path):
