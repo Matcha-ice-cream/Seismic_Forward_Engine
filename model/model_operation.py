@@ -73,6 +73,6 @@ class getmodel:
 
     @ti.kernel
     def model_perlin(self):
-        
+
 
         pass
