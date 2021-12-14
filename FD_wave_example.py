@@ -18,7 +18,7 @@ src_z = 400
 c = ti.field(dtype=ti.f32, shape=(600, 600))
 c_s = ti.field(dtype=ti.f32, shape=(1000, 5000))
 
-model = getmodel(nx, nz)
+model = getmodel(nx, nz, 10, 10)
 model.model_default()
 
 
