@@ -48,9 +48,9 @@ class getmodel:
             self.model_vz1[i, j] = (self.model_vp[i, j + 1] - self.model_vp[i, j - 1]) / (2 * self.dz)
         for i, j in self.model_vp:
             self.model_vx2[i, j] = (self.model_vp[i + 1, j] - 2 * self.model_vp[i, j] + self.model_vp[i - 1, j]) / (
-                        self.dx ** 2)
+                    self.dx ** 2)
             self.model_vz2[i, j] = (self.model_vp[i, j + 1] - 2 * self.model_vp[i, j] + self.model_vp[i, j - 1]) / (
-                        self.dz ** 2)
+                    self.dz ** 2)
 
     def model_file(self, path, mod):
         if mod == 'vp':
@@ -65,14 +65,25 @@ class getmodel:
             arr = np.loadtxt(path)
             self.model_vs = arr.from_numpy()
         else:
-            assert "please check your file!"
+            assert "please check your file!/请检查文件路径！(来自喵子emm的善意提醒)"
 
     @ti.func
     def fade(self, t):
         return 6 * t ** 5 + 15 * t ** 4 + 10 * t ** 3
 
     @ti.kernel
-    def model_perlin(self):
+    def model_perlin(self, lx: ti.i32, lz: ti.i32):
+        if self.dx / lx != 0 or self.dz / lz != 0:
+            assert "Please make sure that the small grid is divisible./请确保小格子可被整除.(来自喵子emm的善意提醒)"
+        for i, j in self.model_vp:
+            xn = i / lx
+            zn = j / lz
+            xi = i % lx
+            zi = j % lz
+            xf = float(xi) / float(lx)
+            zf = float(zi) / float(lz)
+            xt = self.fade(xf)
+            zt = self.fade(zf)
 
 
         pass

@@ -1,6 +1,7 @@
 import taichi as ti
 import numpy as np
 
+
 @ti.data_oriented
 class wave:
     def __init__(self, src_x, src_z, nx, nz, dx, dz, PML_up_ToF, PML_n, dt, t, fm, mod_vp, mod_rho):
@@ -37,37 +38,42 @@ class wave:
         self.v_w = ti.Vector.field(2, dtype=ti.f32, shape=(nx, nz))
         self.d = ti.Vector.field(2, dtype=ti.f32, shape=(nx, nz))
 
-
     @ti.func
     def ricker(self, frame):
-        return 10.0 * (1 - 2 * (3.1415926 * self.fm * self.dt * (frame-100)) ** 2) \
-               * ti.exp(-(3.1415926 * self.fm * self.dt * (frame-100)) ** 2)
-
+        return 10.0 * (1 - 2 * (3.1415926 * self.fm * self.dt * (frame - 100)) ** 2) \
+               * ti.exp(-(3.1415926 * self.fm * self.dt * (frame - 100)) ** 2)
 
     @ti.kernel
     def PML_cal(self):
         for i, j in self.d:
             self.d[i, j] = [0, 0]
-        
+
         for i, j in self.d:
             if i <= self.PML_n:
-                self.d[i, j][0] = 1.0 * (1.0 - ti.cos(3.1415926 * (float(self.PML_n) - float(i)) / (2.0 * float(self.PML_n))))
-                self.d[i, j][1] = 1.0 * (1.0 - ti.cos(3.1415926 * (float(self.PML_n) - float(i)) / (2.0 * float(self.PML_n))))
+                self.d[i, j][0] = 1.0 * (
+                            1.0 - ti.cos(3.1415926 * (float(self.PML_n) - float(i)) / (2.0 * float(self.PML_n))))
+                self.d[i, j][1] = 1.0 * (
+                            1.0 - ti.cos(3.1415926 * (float(self.PML_n) - float(i)) / (2.0 * float(self.PML_n))))
 
             if j <= self.PML_n:
-                self.d[i, j][0] = 1.0 * (1.0 - ti.cos(3.1415926 * (float(self.PML_n) - float(j)) / (2.0 * float(self.PML_n))))
-                self.d[i, j][1] = 1.0 * (1.0 - ti.cos(3.1415926 * (float(self.PML_n) - float(j)) / (2.0 * float(self.PML_n))))
+                self.d[i, j][0] = 1.0 * (
+                            1.0 - ti.cos(3.1415926 * (float(self.PML_n) - float(j)) / (2.0 * float(self.PML_n))))
+                self.d[i, j][1] = 1.0 * (
+                            1.0 - ti.cos(3.1415926 * (float(self.PML_n) - float(j)) / (2.0 * float(self.PML_n))))
 
             if self.nx - self.PML_n <= i <= self.nx:
-                h = self.nx -i
-                self.d[i, j][0] = 1.0 * (1.0 - ti.cos(3.1415926 * (float(self.PML_n) - float(h)) / (2.0 * float(self.PML_n))))
-                self.d[i, j][1] = 1.0 * (1.0 - ti.cos(3.1415926 * (float(self.PML_n) - float(h)) / (2.0 * float(self.PML_n))))
+                h = self.nx - i
+                self.d[i, j][0] = 1.0 * (
+                            1.0 - ti.cos(3.1415926 * (float(self.PML_n) - float(h)) / (2.0 * float(self.PML_n))))
+                self.d[i, j][1] = 1.0 * (
+                            1.0 - ti.cos(3.1415926 * (float(self.PML_n) - float(h)) / (2.0 * float(self.PML_n))))
 
             if self.nz - self.PML_n <= j <= self.nz:
                 h = self.nz - j
-                self.d[i, j][0] = 1.0 * (1.0 - ti.cos(3.1415926 * (float(self.PML_n) - float(h)) / (2.0 * float(self.PML_n))))
-                self.d[i, j][1] = 1.0 * (1.0 - ti.cos(3.1415926 * (float(self.PML_n) - float(h)) / (2.0 * float(self.PML_n))))
-
+                self.d[i, j][0] = 1.0 * (
+                            1.0 - ti.cos(3.1415926 * (float(self.PML_n) - float(h)) / (2.0 * float(self.PML_n))))
+                self.d[i, j][1] = 1.0 * (
+                            1.0 - ti.cos(3.1415926 * (float(self.PML_n) - float(h)) / (2.0 * float(self.PML_n))))
 
     @ti.kernel
     def wave_field_cal(self, frame: ti.f32):
@@ -77,11 +83,13 @@ class wave:
                                     self.C_wave[1] * (self.p[i, j + 2] - self.p[i, j - 1])
                 self.p_w[i, j][1] = self.C_wave[2] * (self.p[i + 1, j] - self.p[i, j]) - \
                                     self.C_wave[3] * (self.p[i + 2, j] - self.p[i - 1, j])
-                self.v_field[i, j][0] = self.v_field[i, j][0] - self.dt / self.model_rho[i, j] * self.p_w[i, j][0] - self.d[i, j][0] * self.v_field[i, j][0]
-                self.v_field[i, j][1] = self.v_field[i, j][1] - self.dt / self.model_rho[i, j] * self.p_w[i, j][1] - self.d[i, j][1] * self.v_field[i, j][1]
+                self.v_field[i, j][0] = self.v_field[i, j][0] - self.dt / self.model_rho[i, j] * self.p_w[i, j][0] - \
+                                        self.d[i, j][0] * self.v_field[i, j][0]
+                self.v_field[i, j][1] = self.v_field[i, j][1] - self.dt / self.model_rho[i, j] * self.p_w[i, j][1] - \
+                                        self.d[i, j][1] * self.v_field[i, j][1]
 
-        self.p_field[self.src_x, self.src_z][0] = self.ricker(frame)/1.0
-        self.p_field[self.src_x, self.src_z][1] = self.ricker(frame)/1.0
+        self.p_field[self.src_x, self.src_z][0] = self.ricker(frame) / 1.0
+        self.p_field[self.src_x, self.src_z][1] = self.ricker(frame) / 1.0
 
         for i, j in self.p_field:
             if self.fn < i < self.nx - self.fn and self.fn < j < self.nz - self.fn:
@@ -89,12 +97,14 @@ class wave:
                                     self.C_wave[1] * (self.v_field[i, j + 1][0] - self.v_field[i, j - 2][0])
                 self.v_w[i, j][1] = self.C_wave[2] * (self.v_field[i, j][1] - self.v_field[i - 1, j][1]) - \
                                     self.C_wave[3] * (self.v_field[i + 1, j][1] - self.v_field[i - 2, j][1])
-                self.p_field[i, j][0] = self.p_field[i, j][0] - self.model_v[i, j] ** 2 * self.model_rho[i, j] * self.dt * (
-                        self.v_w[i, j][0]) - self.d[i, j][0] * self.p_field[i, j][0]
-                self.p_field[i, j][1] = self.p_field[i, j][1] - self.model_v[i, j] ** 2 * self.model_rho[i, j] * self.dt * (
-                        self.v_w[i, j][1]) - self.d[i, j][1] * self.p_field[i, j][1]
+                self.p_field[i, j][0] = self.p_field[i, j][0] - self.model_v[i, j] ** 2 * self.model_rho[
+                    i, j] * self.dt * (
+                                            self.v_w[i, j][0]) - self.d[i, j][0] * self.p_field[i, j][0]
+                self.p_field[i, j][1] = self.p_field[i, j][1] - self.model_v[i, j] ** 2 * self.model_rho[
+                    i, j] * self.dt * (
+                                            self.v_w[i, j][1]) - self.d[i, j][1] * self.p_field[i, j][1]
                 self.p[i, j] = self.p_field[i, j][0] + self.p_field[i, j][1]
 
     def export(self, arr, path):
         arr_export = arr.to_numpy()
-        np.savetxt(path,arr_export)
+        np.savetxt(path, arr_export)
