@@ -86,4 +86,5 @@ class getmodel:
             zt = self.fade(zf)
 
 
+
         pass
