@@ -19,6 +19,8 @@ class getmodel:
         self.model_vz1 = ti.field(dtype=ti.f32, shape=(nx, nz))
         self.model_vz2 = ti.field(dtype=ti.f32, shape=(nx, nz))
 
+        self.model_rand = ti.Vector.field(2, dtype=ti.f32)
+
     def diff_1(self, v):
         for i, j in v:
             self.model_vx1[i, j] = (v[i + 1, j] - v[i - 1, j]) / (2 * self.dx)
@@ -75,6 +77,13 @@ class getmodel:
     def model_perlin(self, lx: ti.i32, lz: ti.i32):
         if self.dx / lx != 0 or self.dz / lz != 0:
             assert "Please make sure that the small grid is divisible./请确保小格子可被整除.(来自喵子emm的善意提醒)"
+        ti.root.dense(ti.ij, (self.nx / lx + 1, self.nz / lz + 1)).place(self.model_rand)
+        for i, j in self.model_rand:
+            a = ti.random(ti.f32)
+            b = ti.random(ti.f32)
+            c = (a**2.0 + b**2.0)**0.5
+            self.model_rand[i, j] = ti.Vector([a/c, b/c])
+
         for i, j in self.model_vp:
             xn = i / lx
             zn = j / lz
@@ -84,6 +93,8 @@ class getmodel:
             zf = float(zi) / float(lz)
             xt = self.fade(xf)
             zt = self.fade(zf)
+
+
 
 
 
