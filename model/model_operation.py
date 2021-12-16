@@ -19,7 +19,7 @@ class getmodel:
         self.model_vz1 = ti.field(dtype=ti.f32, shape=(nx, nz))
         self.model_vz2 = ti.field(dtype=ti.f32, shape=(nx, nz))
 
-        self.model_rand = ti.Vector.field(2, dtype=ti.f32)
+        self.model_rand = ti.Vector.field(2, dtype=ti.f32, shape=())
 
     def diff_1(self, v):
         for i, j in v:
@@ -93,9 +93,21 @@ class getmodel:
             zf = float(zi) / float(lz)
             xt = self.fade(xf)
             zt = self.fade(zf)
+            Pa = ti.Vector([xf, zf])
+            Pb = ti.Vector([xf - 1.0, zf])
+            Pc = ti.Vector([xf, zf - 1.0])
+            Pd = ti.Vector([xf - 1.0, zf - 1.0])
+            TA = self.model_rand[xn, zn].dot(Pa)
+            TB = self.model_rand[xn + 1, zn].dot(Pb)
+            TC = self.model_rand[xn, zn + 1].dot(Pc)
+            TD = self.model_rand[xn + 1, zn + 1].dot(Pd)
 
+            l1 = self.fade(TA) + (self.fade(TB) - self.fade(TA)) * xt
+            l2 = self.fade(TC) + (self.fade(TD) - self.fade(TC)) * xt
+            u = self.fade(l1) + (self.fade(l2) - self.fade(l1)) * zt
 
-
-
+            self.model_vp[i, j] = u
+            self.model_vs[i, j] = u
+            self.model_rho[i, j] = u
 
         pass

@@ -4,7 +4,7 @@ from FD_wave.receiver_module import receiver
 from model.model_operation import getmodel
 import Visualization.SFE_visual as vis
 
-ti.init(arch=ti.metal)
+ti.init(arch=ti.gpu)
 frame = 1
 
 nx = 600
