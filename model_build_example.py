@@ -1,14 +1,17 @@
 import taichi as ti
+from model.model_operation import getmodel
 
 ti.init(arch=ti.gpu)
 
-
-@ti.kernel
-def ra():
-    for i in range(100):
-        a = ti.random(ti.f32)
-        print(a)
+model_cs = getmodel(500, 500, 10, 10)
 
 
+model_cs.model_perlin(50, 50)
 
-ra()
+gui = ti.GUI("model", (500, 500))
+
+
+while True:
+    gui.set_image(model_cs.model_vp)
+
+    gui.show()

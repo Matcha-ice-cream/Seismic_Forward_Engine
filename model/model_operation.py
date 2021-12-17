@@ -19,7 +19,7 @@ class getmodel:
         self.model_vz1 = ti.field(dtype=ti.f32, shape=(nx, nz))
         self.model_vz2 = ti.field(dtype=ti.f32, shape=(nx, nz))
 
-        self.model_rand = ti.Vector.field(2, dtype=ti.f32, shape=())
+        self.model_rand = ti.Vector.field(2, dtype=ti.f32, shape=(10, 10))
 
     def diff_1(self, v):
         for i, j in v:
@@ -67,7 +67,8 @@ class getmodel:
             arr = np.loadtxt(path)
             self.model_vs = arr.from_numpy()
         else:
-            assert "please check your file!/请检查文件路径！(来自喵子emm的善意提醒)"
+            # assert "please check your file!/请检查文件路径！(来自喵子emm的善意提醒)"
+            pass
 
     @ti.func
     def fade(self, t):
@@ -76,8 +77,9 @@ class getmodel:
     @ti.kernel
     def model_perlin(self, lx: ti.i32, lz: ti.i32):
         if self.dx / lx != 0 or self.dz / lz != 0:
-            assert "Please make sure that the small grid is divisible./请确保小格子可被整除.(来自喵子emm的善意提醒)"
-        ti.root.dense(ti.ij, (self.nx / lx + 1, self.nz / lz + 1)).place(self.model_rand)
+            # assert "Please make sure that the small grid is divisible./请确保小格子可被整除.(来自喵子emm的善意提醒)"
+            pass
+        # ti.root.dense(ti.ij, (self.nx / lx + 1, self.nz / lz + 1)).place(self.model_rand)
         for i, j in self.model_rand:
             a = ti.random(ti.f32)
             b = ti.random(ti.f32)
@@ -110,4 +112,7 @@ class getmodel:
             self.model_vs[i, j] = u
             self.model_rho[i, j] = u
 
+    @ti.kernel
+    def model_perlin_change(self):
         pass
+
