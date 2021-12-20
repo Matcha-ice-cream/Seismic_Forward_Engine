@@ -7,7 +7,7 @@ Seismic Forward Engine based on taichi and python.
 
     python 3.8
 
-    taichi 0.8.3
+    taichi 0.8.7
 
 在运行程序前，请确保已经拥有了以上环境。
 
@@ -15,6 +15,14 @@ Seismic Forward Engine based on taichi and python.
 
 ![demo](./image/example_20211112.gif)
 
+
+生成柏林噪声(用于模型生成/射线追踪)
+
+![demo](./image/perlin_noise.png)
+
+
 运行方式：
 
     python FD_wave_example.py
+
+    python model_build_example.py
