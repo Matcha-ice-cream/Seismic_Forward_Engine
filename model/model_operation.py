@@ -19,7 +19,7 @@ class getmodel:
         self.model_vz1 = ti.field(dtype=ti.f32, shape=(nx, nz))
         self.model_vz2 = ti.field(dtype=ti.f32, shape=(nx, nz))
 
-        self.model_rand = ti.Vector.field(2, dtype=ti.f32, shape=(20, 20))
+        self.model_rand = ti.Vector.field(2, dtype=ti.f32, shape=(50, 50))
 
     def diff_1(self, v):
         for i, j in v:
