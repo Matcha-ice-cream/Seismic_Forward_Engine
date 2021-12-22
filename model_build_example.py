@@ -6,7 +6,7 @@ ti.init(arch=ti.gpu)
 
 model_cs = getmodel(500, 500, 10, 10)
 
-model_cs.model_perlin(50, 50)
+model_cs.model_perlin_munk(50, 50, 1000.0, 1000.0, 1500.0)
 
 gui = ti.GUI("model", (500, 500))
 

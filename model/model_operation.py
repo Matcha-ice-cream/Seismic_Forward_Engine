@@ -21,7 +21,7 @@ class getmodel:
 
         self.model_munk = ti.field(dtype=ti.f32, shape=(nx, nz))
 
-        # self.model_rand = ti.Vector.field(2, dtype=ti.f32, shape=(50, 50))
+
         self.model_rand = ti.Vector.field(2, ti.f32)
         ti.root.dense(ti.i, 100).dense(ti.j, 100).place(self.model_rand)
 
@@ -119,12 +119,11 @@ class getmodel:
             self.model_rho[i, j] = u
 
     @ti.kernel
-    def model_perlin_munk(self, lx: ti.i32, lz: ti.i32):
-        if self.nx / lx != 0 or self.nz / lz != 0:
-            # assert "Please make sure that the small grid is divisible./请确保小格子可被整除.(来自喵子emm的善意提醒)"
-            pass
-        # ti.root.dense(ti.ij, (self.nx / lx + 1, self.nz / lz + 1)).place(self.model_rand)
-        # ti.root.dense(ti.i, self.nx / lx + 1).dense(ti.j, self.nz / lz + 1).place(self.model_rand)
+    def model_perlin_munk(self, lx: ti.i32, lz: ti.i32, B: ti.f32, z0: ti.f32, v0: ti.f32):
+        # if self.nx / lx != 0 or self.nz / lz != 0:
+        #     # assert "Please make sure that the small grid is divisible./请确保小格子可被整除.(来自喵子emm的善意提醒)"
+        #     pass
+
         for i, j in self.model_rand:
             a = (ti.random(ti.f32) - 0.5) * 2
             b = (ti.random(ti.f32) - 0.5) * 2
@@ -152,9 +151,13 @@ class getmodel:
             l2 = TC + (TD - TC) * xt
             u = l1 + (l2 - l1) * zt
 
-            self.model_vp[i, j] = u
-            self.model_vs[i, j] = u
-            self.model_rho[i, j] = u
+            z = float(j) * self.dz
+            eps = 0.57 * 10.0 ** -2.0
+            yita = 2.0*(z - z0) / B
+
+            self.model_vp[i, j] = u + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
+            self.model_vs[i, j] = u + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
+            self.model_rho[i, j] = 1000.0 + u
 
     @ti.kernel
     def model_perlin_change(self):
