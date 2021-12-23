@@ -21,6 +21,10 @@ Seismic Forward Engine based on taichi and python.
 ![demo](./image/perlin_noise.png)
 
 
+生成基于munk和perlin noise的海水分布模型（静态）
+
+![demo](./image/munk_perlin.png)
+
 运行方式：
 
     python FD_wave_example.py
