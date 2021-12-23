@@ -155,7 +155,7 @@ class getmodel:
             eps = 0.57 * 10.0 ** -2.0
             yita = 2.0*(z - z0) / B
 
-            self.model_vp[i, j] = u + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
+            self.model_vp[i, j] = u*2 + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
             self.model_vs[i, j] = u + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
             self.model_rho[i, j] = 1000.0 + u
 

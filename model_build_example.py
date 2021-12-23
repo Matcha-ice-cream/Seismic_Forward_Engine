@@ -14,7 +14,7 @@ model_cs.model_perlin_munk(50, 50, 1000.0, 1000.0, 1500.0)
 gui = ti.GUI("model", (500, 500))
 c2 = ti.field(ti.f32, shape=(500, 500))
 
-visual.SFE_wave_render(model_cs.model_vp, c2, 1490, 1510)
+visual.SFE_wave_render(model_cs.model_vp, c2, 1500, 1530)
 
 # tools.export(model_cs.model_vp, "data.txt")
 # print(c2)
