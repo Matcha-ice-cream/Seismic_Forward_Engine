@@ -14,7 +14,17 @@ def SFE_gray_show(c:ti.template(), x:ti.template()):
         c[i, j] = x[i, j] + 3.5/10.0
 
 @ti.kernel
-def SFE_wave_show():
+def SFE_wave_render(c: ti.template(), c2: ti.template(), max_l: ti.f32, min_l: ti.f32):
     # 用于将数据绘制\渲染成正演时常见的形式
-    pass
+    for i, j in c:
+        d = max_l - min_l
+        c2[i, j] = (c[i, j] - min_l) / d
+
+@ti.kernel
+def SFE_reverse(c: ti.template(), c_reverse: ti.template(), nx: ti.i32, nz: ti.i32):
+    for i, j in c:
+        c_reverse[i, j] = c[i, nz - 1 - j]
+
+
+
 
