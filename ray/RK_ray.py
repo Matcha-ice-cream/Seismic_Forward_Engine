@@ -11,6 +11,10 @@ class RK_ray:
         self.dx = dx
         self.ray_n = ray_n
 
+        
+
+
+
 
 
 
