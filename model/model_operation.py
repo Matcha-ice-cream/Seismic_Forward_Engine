@@ -21,12 +21,6 @@ class getmodel:
 
         self.model_munk = ti.field(dtype=ti.f32, shape=(nx, nz))
 
-
-        self.model_rand = ti.Vector.field(2, ti.f32)
-        ti.root.dense(ti.i, 100).dense(ti.j, 100).place(self.model_rand)
-
-
-
     def diff_1(self, v):
         for i, j in v:
             self.model_vx1[i, j] = (v[i + 1, j] - v[i - 1, j]) / (2 * self.dx)
@@ -81,15 +75,15 @@ class getmodel:
         return 6.0 * t ** 5.0 - 15.0 * t ** 4.0 + 10.0 * t ** 3.0
 
     @ti.kernel
-    def model_perlin(self, lx: ti.i32, lz: ti.i32):
+    def model_perlin_ti(self, lx: ti.i32, lz: ti.i32):
         if self.nx / lx != 0 or self.nz / lz != 0:
             # assert "Please make sure that the small grid is divisible./请确保小格子可被整除.(来自喵子emm的善意提醒)"
             pass
         # ti.root.dense(ti.ij, (self.nx / lx + 1, self.nz / lz + 1)).place(self.model_rand)
         # ti.root.dense(ti.i, self.nx / lx + 1).dense(ti.j, self.nz / lz + 1).place(self.model_rand)
         for i, j in self.model_rand:
-            a = (ti.random(ti.f32)-0.5)*2
-            b = (ti.random(ti.f32)-0.5)*2
+            a = (ti.random(ti.f32) - 0.5) * 2
+            b = (ti.random(ti.f32) - 0.5) * 2
             self.model_rand[i, j] = ti.Vector([a, b]).normalized()
 
         for i, j in self.model_vp:
@@ -119,7 +113,7 @@ class getmodel:
             self.model_rho[i, j] = u
 
     @ti.kernel
-    def model_perlin_munk(self, lx: ti.i32, lz: ti.i32, B: ti.f32, z0: ti.f32, v0: ti.f32):
+    def model_perlin_munk_ti(self, lx: ti.i32, lz: ti.i32, B: ti.f32, z0: ti.f32, v0: ti.f32):
         # if self.nx / lx != 0 or self.nz / lz != 0:
         #     # assert "Please make sure that the small grid is divisible./请确保小格子可被整除.(来自喵子emm的善意提醒)"
         #     pass
@@ -153,9 +147,9 @@ class getmodel:
 
             z = float(j) * self.dz
             eps = 0.57 * 10.0 ** -2.0
-            yita = 2.0*(z - z0) / B
+            yita = 2.0 * (z - z0) / B
 
-            self.model_vp[i, j] = u*2 + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
+            self.model_vp[i, j] = u * 2 + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
             self.model_vs[i, j] = u + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
             self.model_rho[i, j] = 1000.0 + u
 
@@ -163,3 +157,9 @@ class getmodel:
     def model_perlin_change(self):
         pass
 
+    def model_perlin(self, lx, lz):
+        self.model_perlin_ti(lx, lz)
+
+    def model_perlin_munk(self, lx, lz, B, z0, v0):
+        self.model_rand = ti.Vector.field(2, ti.f32, shape=(int(self.nx / lx) + 10, int(self.nz / lz) + 10))
+        self.model_perlin_munk_ti(lx, lz, B, z0, v0)
