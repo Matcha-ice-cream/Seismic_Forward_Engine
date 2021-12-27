@@ -113,15 +113,15 @@ class getmodel:
             self.model_rho[i, j] = u
 
     @ti.kernel
-    def model_perlin_munk_ti(self, lx: ti.i32, lz: ti.i32, B: ti.f32, z0: ti.f32, v0: ti.f32):
+    def model_perlin_munk_ti(self, lx: ti.i32, lz: ti.i32, B: ti.f32, z0: ti.f32, v0: ti.f32, model_rand: ti.template()):
         # if self.nx / lx != 0 or self.nz / lz != 0:
         #     # assert "Please make sure that the small grid is divisible./请确保小格子可被整除.(来自喵子emm的善意提醒)"
         #     pass
 
-        for i, j in self.model_rand:
+        for i, j in model_rand:
             a = (ti.random(ti.f32) - 0.5) * 2
             b = (ti.random(ti.f32) - 0.5) * 2
-            self.model_rand[i, j] = ti.Vector([a, b]).normalized()
+            model_rand[i, j] = ti.Vector([a, b]).normalized()
 
         for i, j in self.model_vp:
             xn = int(ti.floor(i / lx))
@@ -136,10 +136,10 @@ class getmodel:
             Pb = ti.Vector([xf - 1.0, zf])
             Pc = ti.Vector([xf, zf - 1.0])
             Pd = ti.Vector([xf - 1.0, zf - 1.0])
-            TA = self.model_rand[xn, zn].dot(Pa)
-            TB = self.model_rand[xn + 1, zn].dot(Pb)
-            TC = self.model_rand[xn, zn + 1].dot(Pc)
-            TD = self.model_rand[xn + 1, zn + 1].dot(Pd)
+            TA = model_rand[xn, zn].dot(Pa)
+            TB = model_rand[xn + 1, zn].dot(Pb)
+            TC = model_rand[xn, zn + 1].dot(Pc)
+            TD = model_rand[xn + 1, zn + 1].dot(Pd)
 
             l1 = TA + (TB - TA) * xt
             l2 = TC + (TD - TC) * xt
@@ -161,5 +161,5 @@ class getmodel:
         self.model_perlin_ti(lx, lz)
 
     def model_perlin_munk(self, lx, lz, B, z0, v0):
-        self.model_rand = ti.Vector.field(2, ti.f32, shape=(int(self.nx / lx) + 10, int(self.nz / lz) + 10))
-        self.model_perlin_munk_ti(lx, lz, B, z0, v0)
+        model_rand = ti.Vector.field(2, ti.f32, shape=(int(self.nx / lx) + 10, int(self.nz / lz) + 10))
+        self.model_perlin_munk_ti(lx, lz, B, z0, v0, model_rand)
