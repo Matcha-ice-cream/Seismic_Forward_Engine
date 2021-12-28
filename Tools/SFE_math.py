@@ -1,12 +1,11 @@
 import taichi as ti
 
-
 @ti.data_oriented
 class SFE_math():
     def __init__(self):
         self.FD_alpha = 0
 
-    def interp(self, method, IX1, IX2, CX1, CX2, nX1,
+    def interp(self, IX1, IX2, CX1, CX2, nX1,
                nX2, Data, Re, ReX1, ReX2):
         h = ti.field(ti.f32, shape=(4, 4))
         FX1 = ti.field(ti.f32, shape=4)
@@ -65,9 +64,9 @@ class SFE_math():
         else:
             f2 = 2
 
-        for i1 in range(FO[f1][0], FO[f1][1] + 1):
-            for i2 in range(FO[f2][0], FO[f2][1] + 1):
-                h[i1][i2] = Data[i1 + IX1 - 1, i2 + IX2 - 1]
+        for i1 in range(FO[f1, 0], FO[f1, 1] + 1):
+            for i2 in range(FO[f2, 0], FO[f2, 1] + 1):
+                h[i1, i2] = Data[i1 + IX1 - 1, i2 + IX2 - 1]
 
         if f1 != 2:
             for i2 in range(0, 4):
@@ -78,4 +77,27 @@ class SFE_math():
                 h[i1, ID[f2, 0]] = 3 * (h[i1, ID[f2, 1]]-h[i1, ID[f2, 2]])+h[i1, ID[f2, 3]]
 
         for i2 in range(0, 4):
+            TE[i2] = 0
+            for i1 in range(0, 4):
+                TE[i2] = TE[i2] + FX1[i1] * h[i1, i2]
+
+        Re = 0
+        for i1 in range(0, 4):
+            Re = Re + TE[i1] * FX2[i1]
+        Re = Re / 4
+
+        ReX2 = 0
+        for i1 in range(0, 4):
+            ReX2 = ReX2 + TE[i1] * DX2[i1]
+        ReX2 = ReX2 / 4
+
+        for i2 in range(0, 4):
+            TE[i2] = 0
+            for i1 in range(0, 4):
+                TE[i2] = TE[i2] + DX1[i1] * h[i1, i2]
+        ReX1 = 0
+        for i1 in range(0, 4):
+            ReX1 = ReX1 + TE[i1] * FX2[i1]
+
+        ReX1 = ReX1 / 4
 
