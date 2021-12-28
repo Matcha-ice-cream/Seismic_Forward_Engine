@@ -6,7 +6,7 @@ class SFE_math():
     def __init__(self):
         self.FD_alpha = 0
 
-    def interp(self, method, IX1, IX2: ti.template(), CX1, CX2, nX1,
+    def interp(self, method, IX1, IX2, CX1, CX2, nX1,
                nX2, Data, Re, ReX1, ReX2):
         h = ti.field(ti.f32, shape=(4, 4))
         FX1 = ti.field(ti.f32, shape=4)
@@ -71,4 +71,11 @@ class SFE_math():
 
         if f1 != 2:
             for i2 in range(0, 4):
-                h[]
+                h[ID[f1, 0], i2] = 3 * (h[ID[f1, 1], i2]-h[ID[f1, 2], i2])+h[ID[f1, 3], i2]
+
+        if f2 != 2:
+            for i1 in range(0, 4):
+                h[i1, ID[f2, 0]] = 3 * (h[i1, ID[f2, 1]]-h[i1, ID[f2, 2]])+h[i1, ID[f2, 3]]
+
+        for i2 in range(0, 4):
+
