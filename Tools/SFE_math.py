@@ -5,6 +5,9 @@ class SFE_math():
     def __init__(self):
         self.FD_alpha = 0
 
+
+
+    @ti.func
     def interp(self, IX1, IX2, CX1, CX2, nX1,
                nX2, Data, Re, ReX1, ReX2):
         h = ti.field(ti.f32, shape=(4, 4))

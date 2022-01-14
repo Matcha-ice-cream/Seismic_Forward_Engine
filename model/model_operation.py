@@ -117,7 +117,10 @@ class getmodel:
         # if self.nx / lx != 0 or self.nz / lz != 0:
         #     # assert "Please make sure that the small grid is divisible./请确保小格子可被整除.(来自喵子emm的善意提醒)"
         #     pass
-
+        for i, j in model_rand:
+            a = (ti.random(ti.f32) - 0.5) * 2
+            b = (ti.random(ti.f32) - 0.5) * 2
+            model_rand[i, j] = ti.Vector([a, b]).normalized()
         for i, j in self.model_vp:
             xn = int(ti.floor(i / lx))
             zn = int(ti.floor(j / lz))
@@ -152,18 +155,10 @@ class getmodel:
     def model_perlin_change(self):
         pass
 
-    @ti.kernel
-    def model_random(self, model_rand):
-        for i, j in model_rand:
-            a = (ti.random(ti.f32) - 0.5) * 2
-            b = (ti.random(ti.f32) - 0.5) * 2
-            model_rand[i, j] = ti.Vector([a, b]).normalized()
-
 
     def model_perlin(self, lx, lz):
         self.model_perlin_ti(lx, lz)
 
     def model_perlin_munk(self, lx, lz, B, z0, v0):
         model_rand = ti.Vector.field(2, ti.f32, shape=(int(self.nx / lx) + 10, int(self.nz / lz) + 10))
-        self.model_random(model_rand)
         self.model_perlin_munk_ti(lx, lz, B, z0, v0, model_rand)
