@@ -131,6 +131,8 @@ class RK_ray:
 
 
 
+
+
         ll1 = px0
         ll2 = pz0
 
