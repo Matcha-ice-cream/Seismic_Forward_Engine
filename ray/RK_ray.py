@@ -1,15 +1,166 @@
 import taichi as ti
+import sys
+sys.path.append("..")
+from model.model_operation import getmodel
+
+
 
 @ti.data_oriented
 class RK_ray:
-    def __init__(self, src_x, src_z, nx, nz, dx, dz, ray_n):
+    def __init__(self, src_x, src_z, dt, frame, n):
         self.src_x = src_x
         self.src_z = src_z
-        self.nx = nx
-        self.nz = nz
-        self.dz = dz
-        self.dx = dx
-        self.ray_n = ray_n
+        self.dt = dt
+        self.n = n
+        self.frame = frame
+
+        self.ray_path = ti.Vector.field(2, dtype=ti.f32, shape=(n, frame))
+        self.ray_direction = ti.Vector.field(2, dtype=ti.f32, shape=(n, frame))
+        self.ray_position = ti.Vector.field(2, dtype=ti.f32, shape=(frame))
+
+        self.a = ti.Vector.field(2, dtype=ti.f32, shape=1)
+        self.b = ti.Vector.field(2, dtype=ti.f32, shape=1)
+
+        self.rand_array = ti.Vector.field(2, dtype=ti.f32, shape=(100, 100))
+
+
+    @ti.kernel
+    def RK_ray_init(self):
+        for i in range(self.n):
+            cos_x = ti.cos(float(i) / float(self.n) * 3.1415926)
+            sin_x = ti.sin(float(i) / float(self.n) * 3.1415926)
+            self.ray_direction[i, 0][0] = cos_x
+            self.ray_direction[i, 0][1] = sin_x
+
+            self.ray_path[i, 0][0] = self.src_x
+            self.ray_path[i, 0][1] = self.src_z
+        for i, j in self.rand_array:
+            a = (ti.random(ti.f32) - 0.5) * 2
+            b = (ti.random(ti.f32) - 0.5) * 2
+            self.rand_array[i, j] = ti.Vector([a, b]).normalized()
+
+    @ti.func
+    def fun(self, data0, data):
+        Y2 = ti.Vector([data0[2], data0[3], -1/(data[0]**3)*data[1], -1/(data[0]**3)*data[2]]) 
+        return Y2
+
+    @ti.func
+    def fade(self, t):
+        return 6.0 * t ** 5.0 - 15.0 * t ** 4.0 + 10.0 * t ** 3.0
+
+    @ti.func
+    def node(self, i, j, lx, lz, z0, v0, B, dz):
+        xn = int(ti.floor(i / lx))
+        zn = int(ti.floor(j / lz))
+        xi = i % lx
+        zi = j % lz
+        xf = float(xi) / float(lx)
+        zf = float(zi) / float(lz)
+        xt = self.fade(xf)
+        zt = self.fade(zf)
+        Pa = ti.Vector([xf, zf])
+        Pb = ti.Vector([xf - 1.0, zf])
+        Pc = ti.Vector([xf, zf - 1.0])
+        Pd = ti.Vector([xf - 1.0, zf - 1.0])
+        TA = self.rand_array[xn, zn].dot(Pa)
+        TB = self.rand_array[xn + 1, zn].dot(Pb)
+        TC = self.rand_array[xn, zn + 1].dot(Pc)
+        TD = self.rand_array[xn + 1, zn + 1].dot(Pd)
+
+        l1 = TA + (TB - TA) * xt
+        l2 = TC + (TD - TC) * xt
+        u = l1 + (l2 - l1) * zt
+
+        z = float(j) * dz
+        eps = 0.57 * 10.0 ** -2.0
+        yita = 2.0 * (z - z0) / B
+
+        vp = u * 2*1000 + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
+        vs = u + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
+        rho = 1000.0 + u
+
+        va = ti.Vector([vp, vs, rho])
+
+        return va
+
+    @ti.func
+    def node_diff(self, lx, lz, B, z0, v0, i, j, nx, nz, dx, dz):
+        data = ti.Vector([0.0,0.0,0.0])
+        if i-1<0 or i+1>nx*dx or j-1<0 or j+1>nz*dz:
+            data[0]=1.0
+            data[1]=0.0
+            data[2]=0.0
+        else:
+            vdata = self.node(i, j, lx, lz, z0, v0, B, dz)
+            vdata_up = self.node(i, j+1, lx, lz, z0, v0, B, dz)
+            vdata_down = self.node(i, j-1, lx, lz, z0, v0, B, dz)
+            vdata_left = self.node(i-1, j, lx, lz, z0, v0, B, dz)
+            vdata_right = self.node(i+1, j, lx, lz, z0, v0, B, dz)
+            vdata_dz = (vdata_up[0] - vdata_down[0])/2
+            vdata_dx = (vdata_right[0] - vdata_left[0])/2 
+            data[0] = vdata[0]
+            data[1] = vdata_dx
+            data[2] = vdata_dz
+        return data
+
+
+    
+    @ti.func
+    def ray_trace(self, data0, data, lx, lz, B, z0, v0, nx, nz, dx, dz):
+        pos = ti.Vector([0.0,0.0,0.0,0.0])
+        K1 =  self.fun(data0, data)
+        pos = data0+self.dt*K1/2
+        data1 = self.node_diff(lx, lz, B, z0, v0, pos[0], pos[1], nx, nz, dx, dz)
+        K2 = self.fun(data0+self.dt*K1/2, data1)
+        pos = data0+self.dt*K2/2
+        data2 = self.node_diff(lx, lz, B, z0, v0, pos[0], pos[1], nx, nz, dx, dz)
+        K3 = self.fun(data0 + self.dt*K2/2, data2)
+        pos = data0+self.dt*K3
+        data3 = self.node_diff(lx, lz, B, z0, v0, pos[0], pos[1], nx, nz, dx, dz)
+        K4 = self.fun(data0+self.dt*K3, data3)
+        data4 = data0 + self.dt/6*(K1 + 2*K2+2*K3+K4)
+        return data4
+
+
+    @ti.kernel
+    def RK_ray_substep(self, k:ti.i32, data:ti.template(), lx:ti.f32, lz:ti.f32, B:ti.f32, z0:ti.f32, v0:ti.f32, nx:ti.i32, nz:ti.i32, dx:ti.f32, dz:ti.f32):
+        for i in range(self.n):
+            data0 = ti.Vector([self.ray_path[i, k][0], self.ray_path[i, k][1], self.ray_direction[i, k][0], self.ray_direction[i, k][1]])
+            # data1 = ti.Vector([self.ray_path[i, k+1][0], self.ray_path[i, k+1][1], self.ray_direction[i, k+1][0], self.ray_direction[i, k+1][1]])
+            data1 = self.ray_trace(data0, data, lx, lz, B, z0, v0, nx, nz, dx, dz)
+            self.ray_path[i, k+1][0] = data1[0]
+            self.ray_path[i, k+1][1] = data1[1]
+            self.ray_direction[i, k+1][0] = data1[2]
+            self.ray_direction[i, k+1][1] = data1[3]
+            if self.ray_path[i, k+1][0] == 0.0 or self.ray_path[i, k+1][1] == 0.0:
+                self.ray_path[i, k+1][0] = self.ray_path[i, k][0]
+                self.ray_path[i, k+1][1] = self.ray_path[i, k][1]
+
+
+
+
+    @ti.kernel
+    def RK_ray_data_tidy(self, xn:ti.i32, nx:ti.f32, nz:ti.f32):
+        for i in self.ray_position:
+            aa = ti.Vector([self.ray_path[xn, i][0]/nx,1 - self.ray_path[xn, i][1]/nz])
+            self.ray_position[i] = aa
+    
+    def RK_ray_paint_single(self, gui, xn, nx, nz, color, radius):
+        self.RK_ray_data_tidy(xn, nx, nz)
+        print(self.ray_position)
+
+        while True:
+            gui.circles(self.ray_position.to_numpy(),color=color, radius=radius)
+            gui.show()
+
+    def RK_ray_paint_multi(self, gui, nx, nz, color, radius):
+        while True:
+            for i in range(self.n-1):
+                self.RK_ray_data_tidy(i+1, nx, nz)
+                gui.circles(self.ray_position.to_numpy(), color=color, radius=radius)
+            gui.show()
+            # print(self.ray_position)
+
 
     @ti.func
     def dis(self, x1, y1, x2, y2):
@@ -111,33 +262,6 @@ class RK_ray:
             ReX1 = ReX1 + TE[i1] * FX2[i1]
 
         ReX1 = ReX1 / 4
-
-
-
-    @ti.func
-    def RK(self, X, v):
-        Xp = ti.Vector([0.0, 0.0, 0.0, 0.0])
-        vd = ti.Vector([0.0, 0.0, 0.0])
-        x0 = X[0]
-        z0 = X[1]
-        px0 = X[2]
-        pz0 = X[3]
-
-        i = ti.round(x0 / self.dx)
-        j = ti.round(z0 / self.dz)
-        self.interp(i, j, x0 - i, z0 - j, self.nx, self.nz, v, vd[0], vd[1], vd[2])
-
-
-
-
-
-
-
-
-        ll1 = px0
-        ll2 = pz0
-
-
 
 
 

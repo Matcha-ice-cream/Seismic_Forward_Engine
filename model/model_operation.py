@@ -21,6 +21,14 @@ class getmodel:
 
         self.model_munk = ti.field(dtype=ti.f32, shape=(nx, nz))
 
+        self.rand_array = ti.Vector.field(2, dtype=ti.f32, shape=(100, 100))
+
+        self.data = ti.field(dtype=ti.f32, shape=3)
+
+
+        self.output_d = ti.Vector([0.0, 0.0, 0.0])
+        self.output = ti.Vector([0.0, 0.0, 0.0])
+
     def diff_1(self, v):
         for i, j in v:
             self.model_vx1[i, j] = (v[i + 1, j] - v[i - 1, j]) / (2 * self.dx)
@@ -31,6 +39,61 @@ class getmodel:
             self.model_vx2[i, j] = (v[i + 1, j] - 2 * v[i, j] + v[i - 1, j]) / (self.dx ** 2)
             self.model_vz2[i, j] = (v[i, j + 1] - 2 * v[i, j] + v[i, j - 1]) / (self.dz ** 2)
 
+    @ti.kernel
+    def generate_rand(self):
+        for i, j in self.rand_array:
+            a = (ti.random(ti.f32) - 0.5) * 2
+            b = (ti.random(ti.f32) - 0.5) * 2
+            self.rand_array[i, j] = ti.Vector([a, b]).normalized()
+
+    
+    @ti.func
+    def fade(self, t):
+        return 6.0 * t ** 5.0 - 15.0 * t ** 4.0 + 10.0 * t ** 3.0
+    
+    @ti.func
+    def node(self, i, j, lx, lz, z0, v0, B):
+        xn = int(ti.floor(i / lx))
+        zn = int(ti.floor(j / lz))
+        xi = i % lx
+        zi = j % lz
+        xf = float(xi) / float(lx)
+        zf = float(zi) / float(lz)
+        xt = self.fade(xf)
+        zt = self.fade(zf)
+        Pa = ti.Vector([xf, zf])
+        Pb = ti.Vector([xf - 1.0, zf])
+        Pc = ti.Vector([xf, zf - 1.0])
+        Pd = ti.Vector([xf - 1.0, zf - 1.0])
+        TA = self.rand_array[xn, zn].dot(Pa)
+        TB = self.rand_array[xn + 1, zn].dot(Pb)
+        TC = self.rand_array[xn, zn + 1].dot(Pc)
+        TD = self.rand_array[xn + 1, zn + 1].dot(Pd)
+
+        l1 = TA + (TB - TA) * xt
+        l2 = TC + (TD - TC) * xt
+        u = l1 + (l2 - l1) * zt
+
+        z = float(j) * self.dz
+        eps = 0.57 * 10.0 ** -2.0
+        yita = 2.0 * (z - z0) / B
+
+        vp = u * 2*1000 + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
+        vs = u + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
+        rho = 1000.0 + u
+
+        va = ti.Vector([vp, vs, rho])
+
+        return va
+
+    @ti.kernel
+    def model_perlin_munk(self, lx: ti.i32, lz: ti.i32, B: ti.f32, z0: ti.f32, v0: ti.f32):
+        for i, j in self.model_vp:
+            vdata = self.node(i, j, lx, lz, z0, v0, B)
+            self.model_vp[i, j] = vdata[0]
+            self.model_vs[i, j] = vdata[1]
+            self.model_rho[i, j] = vdata[2]
+    
     @ti.kernel
     def model_default(self):
         for i, j in self.model_vp:
@@ -70,22 +133,28 @@ class getmodel:
             # assert "please check your file!/请检查文件路径！(来自喵子emm的善意提醒)"
             pass
 
-    @ti.func
-    def fade(self, t):
-        return 6.0 * t ** 5.0 - 15.0 * t ** 4.0 + 10.0 * t ** 3.0
+    @ti.kernel
+    def model_perlin_munk_node(self, lx: ti.i32, lz: ti.i32, B: ti.f32, z0: ti.f32, v0: ti.f32, i:ti.f32, j:ti.f32):
+        if i-1<0 or i+1>self.nx*self.dx or j-1<0 or j+1>self.nz*self.dz:
+            self.data[0]=1.0
+            self.data[1]=0.0
+            self.data[2]=0.0
+        else:
+            vdata = self.node(i, j, lx, lz, z0, v0, B)
+            vdata_up = self.node(i, j+1, lx, lz, z0, v0, B)
+            vdata_down = self.node(i, j-1, lx, lz, z0, v0, B)
+            vdata_left = self.node(i-1, j, lx, lz, z0, v0, B)
+            vdata_right = self.node(i+1, j, lx, lz, z0, v0, B)
+            vdata_dz = (vdata_up[0] - vdata_down[0])/2
+            vdata_dx = (vdata_right[0] - vdata_left[0])/2 
+            self.data[0] = vdata[0]
+            self.data[1] = vdata_dx
+            self.data[2] = vdata_dz
+
+
 
     @ti.kernel
     def model_perlin_ti(self, lx: ti.i32, lz: ti.i32):
-        if self.nx / lx != 0 or self.nz / lz != 0:
-            # assert "Please make sure that the small grid is divisible./请确保小格子可被整除.(来自喵子emm的善意提醒)"
-            pass
-        # ti.root.dense(ti.ij, (self.nx / lx + 1, self.nz / lz + 1)).place(self.model_rand)
-        # ti.root.dense(ti.i, self.nx / lx + 1).dense(ti.j, self.nz / lz + 1).place(self.model_rand)
-        for i, j in self.model_rand:
-            a = (ti.random(ti.f32) - 0.5) * 2
-            b = (ti.random(ti.f32) - 0.5) * 2
-            self.model_rand[i, j] = ti.Vector([a, b]).normalized()
-
         for i, j in self.model_vp:
             xn = int(ti.floor(i / lx))
             zn = int(ti.floor(j / lz))
@@ -99,10 +168,10 @@ class getmodel:
             Pb = ti.Vector([xf - 1.0, zf])
             Pc = ti.Vector([xf, zf - 1.0])
             Pd = ti.Vector([xf - 1.0, zf - 1.0])
-            TA = self.model_rand[xn, zn].dot(Pa)
-            TB = self.model_rand[xn + 1, zn].dot(Pb)
-            TC = self.model_rand[xn, zn + 1].dot(Pc)
-            TD = self.model_rand[xn + 1, zn + 1].dot(Pd)
+            TA = self.rand_array[xn, zn].dot(Pa)
+            TB = self.rand_array[xn + 1, zn].dot(Pb)
+            TC = self.rand_array[xn, zn + 1].dot(Pc)
+            TD = self.rand_array[xn + 1, zn + 1].dot(Pd)
 
             l1 = TA + (TB - TA) * xt
             l2 = TC + (TD - TC) * xt
@@ -112,44 +181,6 @@ class getmodel:
             self.model_vs[i, j] = u
             self.model_rho[i, j] = u
 
-    @ti.kernel
-    def model_perlin_munk_ti(self, lx: ti.i32, lz: ti.i32, B: ti.f32, z0: ti.f32, v0: ti.f32, model_rand: ti.template()):
-        # if self.nx / lx != 0 or self.nz / lz != 0:
-        #     # assert "Please make sure that the small grid is divisible./请确保小格子可被整除.(来自喵子emm的善意提醒)"
-        #     pass
-        for i, j in model_rand:
-            a = (ti.random(ti.f32) - 0.5) * 2
-            b = (ti.random(ti.f32) - 0.5) * 2
-            model_rand[i, j] = ti.Vector([a, b]).normalized()
-        for i, j in self.model_vp:
-            xn = int(ti.floor(i / lx))
-            zn = int(ti.floor(j / lz))
-            xi = i % lx
-            zi = j % lz
-            xf = float(xi) / float(lx)
-            zf = float(zi) / float(lz)
-            xt = self.fade(xf)
-            zt = self.fade(zf)
-            Pa = ti.Vector([xf, zf])
-            Pb = ti.Vector([xf - 1.0, zf])
-            Pc = ti.Vector([xf, zf - 1.0])
-            Pd = ti.Vector([xf - 1.0, zf - 1.0])
-            TA = model_rand[xn, zn].dot(Pa)
-            TB = model_rand[xn + 1, zn].dot(Pb)
-            TC = model_rand[xn, zn + 1].dot(Pc)
-            TD = model_rand[xn + 1, zn + 1].dot(Pd)
-
-            l1 = TA + (TB - TA) * xt
-            l2 = TC + (TD - TC) * xt
-            u = l1 + (l2 - l1) * zt
-
-            z = float(j) * self.dz
-            eps = 0.57 * 10.0 ** -2.0
-            yita = 2.0 * (z - z0) / B
-
-            self.model_vp[i, j] = u * 2 + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
-            self.model_vs[i, j] = u + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
-            self.model_rho[i, j] = 1000.0 + u
 
     @ti.kernel
     def model_perlin_change(self):
@@ -159,6 +190,5 @@ class getmodel:
     def model_perlin(self, lx, lz):
         self.model_perlin_ti(lx, lz)
 
-    def model_perlin_munk(self, lx, lz, B, z0, v0):
-        model_rand = ti.Vector.field(2, ti.f32, shape=(int(self.nx / lx) + 10, int(self.nz / lz) + 10))
-        self.model_perlin_munk_ti(lx, lz, B, z0, v0, model_rand)
+
+

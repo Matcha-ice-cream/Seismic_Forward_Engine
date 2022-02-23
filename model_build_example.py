@@ -8,8 +8,11 @@ ti.init(arch=ti.gpu)
 c_reverse = ti.field(ti.f32, shape = (500, 500))
 
 model_cs = getmodel(500, 500, 10, 10)
-
+model_cs.generate_rand()
 model_cs.model_perlin_munk(50, 50, 1000.0, 1000.0, 1500.0)
+model_cs.model_perlin_munk_node(50, 50, 1000.0, 1000.0, 1500.0, 1.2, 2.5)
+print(model_cs.data)
+
 
 gui = ti.GUI("model", (500, 500))
 c2 = ti.field(ti.f32, shape=(500, 500))
