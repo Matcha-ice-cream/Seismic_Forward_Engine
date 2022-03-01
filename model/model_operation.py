@@ -78,7 +78,8 @@ class getmodel:
         eps = 0.57 * 10.0 ** -2.0
         yita = 2.0 * (z - z0) / B
 
-        vp = u * 2*1000 + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
+        # vp = u * 2 + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
+        vp = v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
         vs = u + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
         rho = 1000.0 + u
 
@@ -135,6 +136,8 @@ class getmodel:
 
     @ti.kernel
     def model_perlin_munk_node(self, lx: ti.i32, lz: ti.i32, B: ti.f32, z0: ti.f32, v0: ti.f32, i:ti.f32, j:ti.f32):
+        i = i / self.dx
+        j = j / self.dz
         if i-1<0 or i+1>self.nx*self.dx or j-1<0 or j+1>self.nz*self.dz:
             self.data[0]=1.0
             self.data[1]=0.0

@@ -3,12 +3,14 @@ import taichi as ti
 
 @ti.data_oriented
 class ray:
-    def __init__(self, src_x, src_z, dt, frame, n):
+    def __init__(self, src_x, src_z, dt, frame, n, dx, dz):
         self.src_x = src_x
         self.src_z = src_z
         self.dt = dt
         self.n = n
         self.frame = frame
+        self.dx = dx
+        self.dz = dz
 
         self.ray_path = ti.Vector.field(2, dtype=ti.f32, shape=(n, frame))
         self.ray_direction = ti.Vector.field(2, dtype=ti.f32, shape=(n, frame))
@@ -53,7 +55,7 @@ class ray:
     @ti.kernel
     def ray_data_tidy(self, xn:ti.i32, nx:ti.f32, nz:ti.f32):
         for i in self.ray_position:
-            aa = ti.Vector([self.ray_path[xn, i][0]/nx,1 - self.ray_path[xn, i][1]/nz])
+            aa = ti.Vector([self.ray_path[xn, i][0]/nx/self.dx,1 - self.ray_path[xn, i][1]/nz/self.dz])
             self.ray_position[i] = aa
     
     def ray_paint_single(self, gui, xn, nx, nz, color, radius):

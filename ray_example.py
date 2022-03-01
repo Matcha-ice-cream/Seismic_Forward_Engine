@@ -8,12 +8,12 @@ import Visualization.SFE_visual as visual
 ti.init(arch=ti.gpu)
 
 
-src_x = 250
-src_z = 20
+src_x = 2500
+src_z = 200
 dt = 1
-frame = 1000
-n = 50
-ray_cs = ray(src_x, src_z, dt, frame, n)
+frame = 3000
+n = 10
+ray_cs = ray(src_x, src_z, dt, frame, n, 10, 10)
 ray_cs.ray_init()
 
 
@@ -32,7 +32,7 @@ for k in range(frame):
     for i in range(n):
         model_cs.model_perlin_munk_node(perlin_nx, perlin_nz, 1000.0, 1000.0, 1500.0, ray_cs.ray_path[i, k][0], ray_cs.ray_path[i, k][1])
         ray_cs.ray_substep(k, model_cs.data)
-        # print(model_cs.data)
+        print(model_cs.data)
 
 # print(ray_cs.ray_path[1,1][0])
 gui = ti.GUI("result", (nx, nz), background_color=0x112F41)
