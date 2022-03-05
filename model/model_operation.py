@@ -1,3 +1,4 @@
+from re import T
 import taichi as ti
 import numpy as np
 
@@ -22,12 +23,16 @@ class getmodel:
         self.model_munk = ti.field(dtype=ti.f32, shape=(nx, nz))
 
         self.rand_array = ti.Vector.field(2, dtype=ti.f32, shape=(100, 100))
+        self.rand_theta = ti.field(dtype = ti.f32, shape=(100,100))
+        self.theta = ti.Vector.field(2, dtype=ti.f32, shape=(100,100))
 
         self.data = ti.field(dtype=ti.f32, shape=3)
 
 
         self.output_d = ti.Vector([0.0, 0.0, 0.0])
         self.output = ti.Vector([0.0, 0.0, 0.0])
+
+        
 
     def diff_1(self, v):
         for i, j in v:
@@ -45,6 +50,12 @@ class getmodel:
             a = (ti.random(ti.f32) - 0.5) * 2
             b = (ti.random(ti.f32) - 0.5) * 2
             self.rand_array[i, j] = ti.Vector([a, b]).normalized()
+        for i, j in self.rand_theta:
+            a = (ti.random(ti.f32) - 0.5) * 2.0 * 3.1415926535
+            self.rand_theta[i, j] = a
+            self.theta[i, j] = ti.Vector([ti.cos(a), ti.sin(a)]).normalized()
+        
+
 
     
     @ti.func
@@ -78,8 +89,9 @@ class getmodel:
         eps = 0.57 * 10.0 ** -2.0
         yita = 2.0 * (z - z0) / B
 
-        # vp = u * 2 + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
-        vp = v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
+        vp = u * 2 * 10 + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
+        # vp = u * 2
+        # vp = v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
         vs = u + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
         rho = 1000.0 + u
 
@@ -184,10 +196,59 @@ class getmodel:
             self.model_vs[i, j] = u
             self.model_rho[i, j] = u
 
+    @ti.func
+    def change_theta(self, theta_c):
+        for i, j in self.theta:
+            self.rand_theta[i, j] += theta_c
+            self.theta[i, j] = ti.Vector([ti.cos(self.rand_theta[i, j]), ti.sin(self.rand_theta[i, j])]).normalized()
+
+
+
+
+    @ti.func
+    def node_change(self, i, j, lx, lz, z0, v0, B):
+        xn = int(ti.floor(i / lx))
+        zn = int(ti.floor(j / lz))
+        xi = i % lx
+        zi = j % lz
+        xf = float(xi) / float(lx)
+        zf = float(zi) / float(lz)
+        xt = self.fade(xf)
+        zt = self.fade(zf)
+        Pa = ti.Vector([xf, zf])
+        Pb = ti.Vector([xf - 1.0, zf])
+        Pc = ti.Vector([xf, zf - 1.0])
+        Pd = ti.Vector([xf - 1.0, zf - 1.0])
+        TA = self.theta[xn, zn].dot(Pa)
+        TB = self.theta[xn + 1, zn].dot(Pb)
+        TC = self.theta[xn, zn + 1].dot(Pc)
+        TD = self.theta[xn + 1, zn + 1].dot(Pd)
+
+        l1 = TA + (TB - TA) * xt
+        l2 = TC + (TD - TC) * xt
+        u = l1 + (l2 - l1) * zt
+
+        z = float(j) * self.dz
+        eps = 0.57 * 10.0 ** -2.0
+        yita = 2.0 * (z - z0) / B
+
+        vp = u * 2*2 + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
+        # vp = u * 2
+        # vp = v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
+        vs = u + v0 * (1.0 + eps * (ti.exp(-yita) - (1.0 - yita)))
+        rho = 1000.0 + u
+
+        va = ti.Vector([vp, vs, rho])
+
+        return va
 
     @ti.kernel
-    def model_perlin_change(self):
-        pass
+    def model_perlin_change(self, lx:ti.f32, lz:ti.f32, B:ti.f32, z0:ti.f32, v0:ti.f32, theta_c:ti.f32):
+        for i, j in self.model_vp:
+            vdata=self.node_change(i, j, lx, lz, z0, v0, B)
+            self.model_vp[i, j] = vdata[0]
+        self.change_theta(theta_c)
+
 
 
     def model_perlin(self, lx, lz):
